@@ -1,0 +1,27 @@
+pipeline_name: "bankdataset_loader"
+version: 1.0
+
+sources:
+  - source_name: "bankdataset.csv"
+    format: "csv"
+    location: "../data/bankdataset.csv"
+    delimeter: ","
+
+fields:
+  - name: "Date"
+    type: "timestamp"
+    required: true
+  - name: "Domain"
+    type: "string"
+    required: true
+  - name: "Location"
+    type: "string"
+    required: true
+  - name: "Value"
+    type: "float64"
+    min: 0.0
+    required: true
+  - name: "transaction_count"
+    type: "int"
+    min: 0
+    required: true
