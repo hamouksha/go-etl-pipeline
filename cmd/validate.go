@@ -30,6 +30,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	numworkers := viper.GetInt("pipeline.workers")
 
 	pipe, err := pipeline.NewValidationPipeline(config)
+
 	if err != nil {
 		return fmt.Errorf("pipeline init failed : %w", err)
 
@@ -39,6 +40,6 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("error happend while validating : %w", err)
 	}
-
+	fmt.Println("Validation completed succesufully with these number of errors")
 	return nil
 }
