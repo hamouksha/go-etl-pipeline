@@ -21,10 +21,15 @@ type Source struct {
 	Delimeter  string `yaml:"delimeter"`
 }
 
+type Target struct {
+	Connection string `yaml:"db,omitempty"`
+	Table      string `yaml:"table,omitempty"`
+}
+
 type PipelineConfig struct {
 	PipelineName string  `yaml:"pipeline_name"`
 	Source       Source  `yaml:"source"`
-	TargetTable  string  `yaml:"target_table"`
+	Target       Target  `yaml:"target"`
 	Fields       []Field `yaml:"fields"`
 }
 
