@@ -27,14 +27,15 @@ func init() {
 
 func runIngest(cmd *cobra.Command, args []string) error {
 	configFilePath := viper.ConfigFileUsed()
-	if configFilePath == "" {
-		return fmt.Errorf("no config file found - define the file path using --config explicitly")
+	dbDsn := viper.GetString("db-dsn")
+
+	if dbDsn == "" && configFilePath == "" {
+		// get the database variables to to make a conn
+		return fmt.Errorf("the dbDsn (database url) var is not set either you set the url to the DBin the config file path or provide them explicitly to the command")
 	}
 
-	// get the database variables to to make a conn
-	dbDsn := viper.GetString("db-dsn")
-	if dbDsn == "" {
-		return fmt.Errorf("the DB_NAME , DB_PASS vars are not set either you set them or provide them explicitly to the command")
+	if configFilePath == "" {
+		return fmt.Errorf("no config file found - define the file path using --config explicitly")
 	}
 
 	numWorkers := viper.GetInt("pipeline.workers")
