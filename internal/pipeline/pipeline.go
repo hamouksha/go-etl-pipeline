@@ -29,9 +29,14 @@ func NewETLPipe(cfgPath string, connString string) (*ETLPipeline, error) {
 	}
 
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, connString)
+	var conn *pgx.Conn
+
+	conn, err = pgx.Connect(ctx, connString)
 	if err != nil {
-		return nil, fmt.Errorf("can't connect to the database : %w \n", err)
+		conn, err = pgx.Connect(ctx, cfg.Target.Connection)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't connect to the database provide them explicitly or in the config file : %v", err)
+		}
 	}
 
 	return &ETLPipeline{cfg: cfg, conn: conn}, nil

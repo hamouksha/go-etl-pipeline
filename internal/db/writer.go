@@ -17,6 +17,7 @@ type Writer struct {
 	conn      *pgx.Conn
 	query     string
 	batchSize int
+	ctx       context.Context
 }
 
 func NewWriter(inputChan <-chan map[string]any,
@@ -29,11 +30,11 @@ func NewWriter(inputChan <-chan map[string]any,
 
 	query := queryBuilder(table, fields)
 
-	return &Writer{input: inputChan, fields: fields, conn: conn, query: query, batchSize: batchSize}
+	return &Writer{input: inputChan, fields: fields, conn: conn, query: query, batchSize: batchSize, ctx: context.Background()}
 
 }
 
-func (w *Writer) Write(ctx context.Context) <-chan error {
+func (w *Writer) Write() <-chan error {
 	errchan := make(chan error, 1000)
 
 	var batch [][]any
@@ -43,7 +44,7 @@ func (w *Writer) Write(ctx context.Context) <-chan error {
 		for row := range w.input {
 
 			if len(batch) >= w.batchSize {
-				err := w.flush(ctx, batch)
+				err := w.flush(w.ctx, batch)
 				if err != nil {
 					errchan <- err
 				}
@@ -58,7 +59,7 @@ func (w *Writer) Write(ctx context.Context) <-chan error {
 		}
 
 		if len(batch) > 0 {
-			err := w.flush(ctx, batch)
+			err := w.flush(w.ctx, batch)
 			if err != nil {
 				errchan <- err
 			}
