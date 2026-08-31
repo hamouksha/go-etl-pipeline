@@ -109,50 +109,50 @@ func queryBuilder(table string, fields []config.Field) string {
 
 func createTable(conn *pgx.Conn, tablename string, fields []config.Field) {
 
-	var b strings.Builder
+	var table []string
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	b.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %v ( PK BIGSERIAL PRIMARY KEY,", tablename))
+	table = append(table, fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s ( PK BIGSERIAL PRIMARY KEY", tablename))
 
 	for _, f := range fields {
 		switch strings.ToLower(f.Type) {
 		case "string", "str", "":
 			if f.Required {
-				b.WriteString(fmt.Sprintf(" %v TEXT NOT NULL, ", f.Name))
+				table = append(table, fmt.Sprintf(" %v TEXT NOT NULL ", f.Name))
 				continue
 			}
-			b.WriteString(fmt.Sprintf(" %v TEXT,", f.Name))
+			table = append(table, fmt.Sprintf(" %v TEXT", f.Name))
 
 		case "integer", "int":
 			if f.Required {
-				b.WriteString(fmt.Sprintf(" %v BIGINT NOT NULL, ", f.Name))
+				table = append(table, fmt.Sprintf(" %v BIGINT NOT NULL ", f.Name))
 				continue
 			}
-			b.WriteString(fmt.Sprintf(" %v INT,", f.Name))
+			table = append(table, fmt.Sprintf(" %v INT", f.Name))
 
 		case "float", "float64":
 			if f.Required {
-				b.WriteString(fmt.Sprintf(" %v REAL NOT NULL, ", f.Name))
+				table = append(table, fmt.Sprintf(" %v REAL NOT NULL ", f.Name))
 				continue
 			}
-			b.WriteString(fmt.Sprintf(" %v REAL,", f.Name))
+			table = append(table, fmt.Sprintf(" %v REAL", f.Name))
 
 		case "timestamp":
 			if f.Required {
-				b.WriteString(fmt.Sprintf(" %v TIMESTAMP NOT NULL, ", f.Name))
+				table = append(table, fmt.Sprintf(" %v TIMESTAMP NOT NULL ", f.Name))
 				continue
 			}
-			b.WriteString(fmt.Sprintf(" %v TIMESTAMP,", f.Name))
+			table = append(table, fmt.Sprintf(" %v TIMESTAMP", f.Name))
 		}
 	}
 
-	b.WriteString(");")
-
-	tag, err := conn.Exec(ctx, b.String())
+	result := strings.Join(table, ",") + ");"
+	log.Printf("the table look like : %s ", result)
+	tag, err := conn.Exec(ctx, result)
 
 	if err != nil {
-		fmt.Errorf("couldn't create db table or couldn't connect to db with err : %v", err)
+		fmt.Printf("couldn't create db table or couldn't connect to db with err : %v", err)
 		return
 	}
 

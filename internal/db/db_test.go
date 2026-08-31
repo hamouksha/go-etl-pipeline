@@ -9,6 +9,17 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+func TestCreatingTables(t *testing.T) {
+
+	sampleconf, err := config.LoadConfig("./testdata/schema.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(sampleconf.PipelineName)
+
+	createTable(&pgx.Conn{}, sampleconf.Target.Table, sampleconf.Fields)
+}
+
 func TestWriterWithFlushing(t *testing.T) {
 
 	sampleconf, err := config.LoadConfig("./testdata/schema.yaml")
@@ -95,7 +106,7 @@ func TestWriterWithFlushing(t *testing.T) {
 
 	writer := NewWriter(samplechan, sampleconf.Fields, conn, sampleconf.Target.Table, 8)
 	fmt.Println("start writing to db")
-	errchan := writer.Write(ctx)
+	errchan := writer.Write()
 	close(samplechan)
 	for err := range errchan {
 
