@@ -29,15 +29,11 @@ go run ./cmd/pipeline --config=config.yaml
 ```mermaid 
 flowchart TD
 
-  A["input CSV File"] --> B["Streaming Parser (backpressure buffer)"]
-
-  B["Streaming Parser (row {header + columns} validation)"] -->  C["Bounded Channel (backpressure buffer)"]
-
-  C["Bounded Channel (backpressure buffer)"] --> D["Transformation Worker Pool (configurable goroutines)"]
-
-  D["Transformation Worker Pool (configurable goroutines)"] --> E["Bounded Channel (backpressure buffer)"]
-
-  E["Bounded Channel (backpressure buffer)"] --> F["pgx Batch Insert (PostgreSQL)"]
+  A["input CSV File"] --> B["Streaming Parser<br/>(backpressure buffer)"]
+  B -->  C["Bounded Channel<br/>(backpressure buffer)"]
+  C --> D["Transformation Worker Pool<br/> (configurable goroutines)"]
+  D --> E["Collector channel<br/> with transformed rows"]
+  E --> F["pgx Batch Insert<br/> (PostgreSQL)"]
 ```
 
 ## Features
@@ -45,7 +41,8 @@ flowchart TD
 - **Streaming parser** — Row-by-row CSV reading via `encoding/csv`. Never loads the full file into memory.
 - **Row validation** — Schema enforcement and type validation before ingestion. Invalid rows are logged and skipped.
 - **Bounded channel backpressure** — Parser blocks when workers are saturated, preventing unbounded memory growth.
-- **Concurrent worker pool** — Configurable goroutines, each with a dedicated pgx connection.
+- **Concurrent worker pool** — Configurable goroutines validate and transform rows in parallel.
+- **Batch collector** — Aggregates validated rows from the worker pool and flushes them via `pgx.Batch` inserts in a single round trip.
 - **pgx batching** — Accumulates rows into `pgx.Batch` and flushes in a single round trip.
 - **YAML configuration** — Pipeline behavior defined in a single config file.
 - **Graceful shutdown** — Drains in-flight batches on SIGTERM/SIGINT.
@@ -107,25 +104,34 @@ target:
 ## Design Decisions
 
 ### Why channels over a shared slice?
+
 A shared slice would require a mutex on every append and keep all parsed rows in 
 heap memory. Channels decouple the parser from workers and provide natural 
 backpressure: when the buffer fills, the parser blocks until a worker is ready.
 
 ### Why pgx over database/sql?
+
 `pgx` supports native batching via `pgx.Batch`, which pipelines multiple INSERTs 
 in one round trip. `database/sql` would require manual transaction wrapping or 
 `COPY FROM`, which is less flexible for per-row validation and error tracking.
 
 ### Worker pool sizing
-Each worker holds one database connection. The pool size defaults to 
-`runtime.NumCPU()` but is configurable via `workers.count`. This prevents Postgres 
-connection exhaustion while maximizing throughput.
+
+Workers handle CPU-bound validation and transformation and don't hold
+database connections directly — only the collector stage connects to
+Postgres. The pool size defaults to `runtime.NumCPU()` but is configurable
+via `workers.count`, sized to match validation throughput rather than
+database connection limits.
 
 ### Row validation before batching
-Validation happens before rows enter the batch. This isolates bad data: one 
-malformed row is logged and skipped rather than failing an entire batch insert.
+
+Validation and transformation happen in the worker pool, before rows reach
+the collector. This isolates bad data: one malformed row is logged and
+skipped rather than failing an entire batch insert downstream.
+
 
 ### Why YAML configuration?
+
 A config file keeps runtime parameters version-controlled and reviewable. It 
 also separates operational concerns (DSN, batch size) from code, making the 
 pipeline reusable across environments without recompilation.
