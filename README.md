@@ -26,20 +26,18 @@ go run ./cmd/pipeline --config=config.yaml
 
 ## Architecture
 
-```
-CSV File
-   ↓
-Streaming Parser (encoding/csv)
-   ↓
-Row Validation (schema + type checking)
-   ↓
-Bounded Channel (backpressure buffer)
-   ↓
-Worker Pool (configurable goroutines)
-   ↓
-pgx Batch Insert
-   ↓
-PostgreSQL
+```mermaid 
+flowchart TD
+
+  A["input CSV File"] --> B["Streaming Parser (backpressure buffer)"]
+
+  B["Streaming Parser (row {header + columns} validation)"] -->  C["Bounded Channel (backpressure buffer)"]
+
+  C["Bounded Channel (backpressure buffer)"] --> D["Transformation Worker Pool (configurable goroutines)"]
+
+  D["Transformation Worker Pool (configurable goroutines)"] --> E["Bounded Channel (backpressure buffer)"]
+
+  E["Bounded Channel (backpressure buffer)"] --> F["pgx Batch Insert (PostgreSQL)"]
 ```
 
 ## Features
